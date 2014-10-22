@@ -21,6 +21,9 @@
 
 @implementation NLContext
 
+static NSMutableDictionary *_processEnv;
+static NSMutableArray *_processArgs;
+
 #pragma mark - JSContext
 
 - (id)initWithVirtualMachine:(JSVirtualMachine *)virtualMachine {
@@ -52,10 +55,18 @@
     };
 #endif
     
+    NSMutableDictionary *env = [self getEnv];
+    NSString *nodePath = [NLContext.resourcePath stringByAppendingString:@"/node_modules"];
+    
+    if (env[@"NODE_PATH"]) {
+        nodePath = [env[@"NODE_PATH"] stringByAppendingFormat:@":%@", nodePath];
+    }
+    env[@"NODE_PATH"] = nodePath;
+    
     JSValue *process = [JSValue valueWithObject:@{
         @"platform": @"darwin",
         @"argv":     @[],
-        @"env":      NSProcessInfo.processInfo.environment,
+        @"env":      env,
         @"execPath": NSBundle.mainBundle.executablePath,
         @"_asyncFlags": @{},
         @"moduleLoadList": @[]
@@ -64,7 +75,7 @@
     JSValue __weak *weakProcess = process;
     
     process[@"resourcePath"]      = NLContext.resourcePath;
-    process[@"env"][@"NODE_PATH"] = [NLContext.resourcePath stringByAppendingString:@"/node_modules"];
+    //process[@"env"][@"NODE_PATH"] = [NLContext.resourcePath stringByAppendingString:@"/node_modules"];
     // used in Hrtime() below
 #define NANOS_PER_SEC 1000000000
 
@@ -229,6 +240,20 @@ static dispatch_queue_t dispatchQueue () {
 
 + (NSString *)resourcePath {
     return [NSBundle bundleForClass:NLContext.class].resourcePath;
+}
+
++ (NSMutableDictionary *)getEnv {
+    if (_processEnv == nil) {
+        _processEnv = NSProcessInfo.processInfo.environment.mutableCopy;
+    }
+    return _processEnv;
+}
+
++ (NSMutableArray *)getArgs {
+    if (_processArgs == nil) {
+        _processArgs = [[NSMutableArray alloc] init];
+    }
+    return _processArgs;
 }
 
 static void CheckImmediate(uv_check_t *handle, int status) {

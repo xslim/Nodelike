@@ -42,4 +42,7 @@
 
 + (NSString *)resourcePath;
 
++ (NSMutableDictionary *)getEnv;
++ (NSMutableArray *)getArgs;
+
 @end
